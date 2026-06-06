@@ -4,7 +4,6 @@ import { useCurrentAccount } from '@mysten/dapp-kit'
 import { useQuery } from '@tanstack/react-query'
 import { Upload, Music, X, CheckCircle, AlertCircle } from 'lucide-react'
 import { uploadEpisode, fetchCreator, registerCreator } from '../lib/index'
-import { MOCK_CREATORS } from '../lib/mockData'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true' || !import.meta.env.VITE_API_URL
 
@@ -24,13 +23,19 @@ export default function UploadPage() {
   const { data: creator, refetch: refetchCreator } = useQuery({
     queryKey: ['creator', account?.address],
     queryFn: () => fetchCreator(account.address),
-    enabled: !!account?.address,
+    enabled: !!account?.address && !USE_MOCK,
     retry: false,
   })
 
   const handleFile = (f) => {
-    if (!f.type.startsWith('audio/')) { setErrorMsg('Please upload an audio file (MP3, WAV, M4A)'); return }
-    if (f.size > 500 * 1024 * 1024) { setErrorMsg('File must be under 500 MB'); return }
+    if (!f.type.startsWith('audio/')) {
+      setErrorMsg('Please upload an audio file (MP3, WAV, M4A)')
+      return
+    }
+    if (f.size > 500 * 1024 * 1024) {
+      setErrorMsg('File must be under 500 MB')
+      return
+    }
     setFile(f)
     setErrorMsg('')
   }
@@ -48,48 +53,30 @@ export default function UploadPage() {
     setErrorMsg('')
 
     try {
-      if (USE_MOCK) {
-        await new Promise(r => setTimeout(r, 1400))
-        const fakeEp = {
-          id: `mock-ep-${Date.now()}`,
-          creator_id: MOCK_CREATORS[0].id,
-          title: title.trim(),
-          description: description.trim() || null,
-          audio_walrus_blob_id: `blobMock${Date.now()}xyzWalrus`,
-          audio_url: null,
-          sui_nft_object_id: null,
-          duration_seconds: null,
-          processing_status: 'generating_transcript',
-          play_count: 0,
-          tip_count: 0,
-          chapters: null,
-          created_at: new Date().toISOString(),
-        }
-        setCreatedEpId(fakeEp.id)
-        setStatus('success')
-        return
-      }
-
-      let creatorId = creator?.id
-      if (!creatorId) {
-        if (!displayName.trim()) {
-          setStatus('idle')
-          setErrorMsg('Enter a display name to create your creator profile')
-          return
-        }
-        const nc = await registerCreator({
-          wallet_address: account?.address ?? 'demo-wallet',
-          display_name: displayName.trim(),
-        })
-        creatorId = nc.id
-        await refetchCreator()
-      }
-
+      // Build FormData — mockApi.uploadEpisode reads it directly, no network call
       const form = new FormData()
-      form.append('creator_id', creatorId)
+      form.append('audio', file)
       form.append('title', title.trim())
       form.append('description', description.trim())
-      form.append('audio', file)
+
+      if (!USE_MOCK) {
+        let creatorId = creator?.id
+        if (!creatorId) {
+          if (!displayName.trim()) {
+            setStatus('idle')
+            setErrorMsg('Enter a display name to create your creator profile')
+            return
+          }
+          const nc = await registerCreator({
+            wallet_address: account?.address,
+            display_name: displayName.trim(),
+          })
+          creatorId = nc.id
+          await refetchCreator()
+        }
+        form.append('creator_id', creatorId)
+      }
+
       const episode = await uploadEpisode(form)
       setCreatedEpId(episode.id)
       setStatus('success')
