@@ -4,6 +4,7 @@ import { useCurrentAccount } from '@mysten/dapp-kit'
 import { useQuery } from '@tanstack/react-query'
 import { Upload, Music, X, CheckCircle, AlertCircle } from 'lucide-react'
 import { uploadEpisode, fetchCreator, registerCreator } from '../lib/index'
+import { MOCK_CREATORS } from '../lib/mockData'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true' || !import.meta.env.VITE_API_URL
 
@@ -30,7 +31,8 @@ export default function UploadPage() {
   const handleFile = (f) => {
     if (!f.type.startsWith('audio/')) { setErrorMsg('Please upload an audio file (MP3, WAV, M4A)'); return }
     if (f.size > 500 * 1024 * 1024) { setErrorMsg('File must be under 500 MB'); return }
-    setFile(f); setErrorMsg('')
+    setFile(f)
+    setErrorMsg('')
   }
 
   const handleDrop = (e) => {
@@ -40,27 +42,60 @@ export default function UploadPage() {
   }
 
   const handleSubmit = async () => {
-    if (!USE_MOCK && !account) return
     if (!file) return setErrorMsg('Please select an audio file')
     if (!title.trim()) return setErrorMsg('Title is required')
-    setStatus('uploading'); setErrorMsg('')
+    setStatus('uploading')
+    setErrorMsg('')
+
     try {
+      if (USE_MOCK) {
+        await new Promise(r => setTimeout(r, 1400))
+        const fakeEp = {
+          id: `mock-ep-${Date.now()}`,
+          creator_id: MOCK_CREATORS[0].id,
+          title: title.trim(),
+          description: description.trim() || null,
+          audio_walrus_blob_id: `blobMock${Date.now()}xyzWalrus`,
+          audio_url: null,
+          sui_nft_object_id: null,
+          duration_seconds: null,
+          processing_status: 'generating_transcript',
+          play_count: 0,
+          tip_count: 0,
+          chapters: null,
+          created_at: new Date().toISOString(),
+        }
+        setCreatedEpId(fakeEp.id)
+        setStatus('success')
+        return
+      }
+
       let creatorId = creator?.id
       if (!creatorId) {
-        if (!displayName.trim()) { setStatus('idle'); setErrorMsg('Enter a display name to create your creator profile'); return }
-        const nc = await registerCreator({ wallet_address: account?.address ?? 'demo-wallet', display_name: displayName.trim() })
+        if (!displayName.trim()) {
+          setStatus('idle')
+          setErrorMsg('Enter a display name to create your creator profile')
+          return
+        }
+        const nc = await registerCreator({
+          wallet_address: account?.address ?? 'demo-wallet',
+          display_name: displayName.trim(),
+        })
         creatorId = nc.id
         await refetchCreator()
       }
+
       const form = new FormData()
       form.append('creator_id', creatorId)
       form.append('title', title.trim())
       form.append('description', description.trim())
       form.append('audio', file)
       const episode = await uploadEpisode(form)
-      setCreatedEpId(episode.id); setStatus('success')
+      setCreatedEpId(episode.id)
+      setStatus('success')
     } catch (err) {
-      setStatus('error'); setErrorMsg(err instanceof Error ? err.message : 'Upload failed')
+      setStatus('error')
+      setErrorMsg(err instanceof Error ? err.message : 'Upload failed')
     }
   }
 
@@ -79,10 +114,16 @@ export default function UploadPage() {
         Your audio is being stored on Walrus. Claude AI is generating the transcript and viral clips — usually 1–3 minutes.
       </p>
       <div style={{ display: 'flex', gap: 12 }}>
-        <button onClick={() => navigate(`/episode/${createdEpId}`)} style={{ padding: '11px 24px', borderRadius: 8, background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-amber))', border: 'none', color: '#0a0a08', fontWeight: 700, cursor: 'pointer' }}>
+        <button
+          onClick={() => navigate(`/episode/${createdEpId}`)}
+          style={{ padding: '11px 24px', borderRadius: 8, background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-amber))', border: 'none', color: '#0a0a08', fontWeight: 700, cursor: 'pointer' }}
+        >
           View Episode
         </button>
-        <button onClick={() => { setFile(null); setTitle(''); setDescription(''); setStatus('idle'); setCreatedEpId(null) }} style={{ padding: '11px 24px', borderRadius: 8, border: '1px solid var(--bg-border)', color: 'var(--ink-secondary)', fontWeight: 600, cursor: 'pointer', background: 'none' }}>
+        <button
+          onClick={() => { setFile(null); setTitle(''); setDescription(''); setStatus('idle'); setCreatedEpId(null) }}
+          style={{ padding: '11px 24px', borderRadius: 8, border: '1px solid var(--bg-border)', color: 'var(--ink-secondary)', fontWeight: 600, cursor: 'pointer', background: 'none' }}
+        >
           Upload Another
         </button>
       </div>
@@ -97,23 +138,43 @@ export default function UploadPage() {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20, animation: 'fadeUp 0.4s 0.1s ease both' }}>
-        {!creator && (
+
+        {!creator && !USE_MOCK && (
           <Field label="Creator Display Name">
-            <input type="text" placeholder="Your name or podcast brand" value={displayName} onChange={e => setDisplayName(e.target.value)} style={{ width: '100%' }} />
+            <input
+              type="text"
+              placeholder="Your name or podcast brand"
+              value={displayName}
+              onChange={e => setDisplayName(e.target.value)}
+              style={{ width: '100%' }}
+            />
           </Field>
         )}
 
         <Field label="Episode Title *">
-          <input type="text" placeholder="e.g. The Future of Decentralised Media" value={title} onChange={e => setTitle(e.target.value)} style={{ width: '100%' }} />
+          <input
+            type="text"
+            placeholder="e.g. The Future of Decentralised Media"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            style={{ width: '100%' }}
+          />
         </Field>
 
         <Field label="Description">
-          <textarea placeholder="Show notes, guest names, links…" value={description} onChange={e => setDescription(e.target.value)} rows={4} style={{ width: '100%', resize: 'vertical' }} />
+          <textarea
+            placeholder="Show notes, guest names, links…"
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            rows={4}
+            style={{ width: '100%', resize: 'vertical' }}
+          />
         </Field>
 
         <Field label="Audio File *">
           <div
-            onDrop={handleDrop} onDragOver={e => e.preventDefault()}
+            onDrop={handleDrop}
+            onDragOver={e => e.preventDefault()}
             onClick={() => fileRef.current?.click()}
             style={{
               border: `2px dashed ${file ? 'var(--accent-gold)' : 'var(--bg-border)'}`,
@@ -121,16 +182,29 @@ export default function UploadPage() {
               cursor: 'pointer', transition: 'border-color 0.2s, background 0.2s',
               background: file ? 'var(--accent-gold)06' : 'var(--bg-elevated)',
             }}
+            onMouseEnter={e => { if (!file) e.currentTarget.style.borderColor = 'var(--ink-muted)' }}
+            onMouseLeave={e => { if (!file) e.currentTarget.style.borderColor = 'var(--bg-border)' }}
           >
-            <input ref={fileRef} type="file" accept="audio/*" style={{ display: 'none' }} onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
+            <input
+              ref={fileRef}
+              type="file"
+              accept="audio/*"
+              style={{ display: 'none' }}
+              onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])}
+            />
             {file ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
                 <Music size={20} color="var(--accent-gold)" />
                 <div style={{ textAlign: 'left' }}>
                   <p style={{ fontWeight: 600, fontSize: '0.88rem' }}>{file.name}</p>
-                  <p className="mono" style={{ fontSize: '0.72rem', color: 'var(--ink-muted)' }}>{(file.size / 1024 / 1024).toFixed(1)} MB</p>
+                  <p className="mono" style={{ fontSize: '0.72rem', color: 'var(--ink-muted)' }}>
+                    {(file.size / 1024 / 1024).toFixed(1)} MB
+                  </p>
                 </div>
-                <button onClick={e => { e.stopPropagation(); setFile(null) }} style={{ marginLeft: 8, color: 'var(--ink-muted)', padding: 2, background: 'none', border: 'none', cursor: 'pointer' }}>
+                <button
+                  onClick={e => { e.stopPropagation(); setFile(null) }}
+                  style={{ marginLeft: 8, color: 'var(--ink-muted)', padding: 2, background: 'none', border: 'none', cursor: 'pointer' }}
+                >
                   <X size={14} />
                 </button>
               </div>
@@ -145,20 +219,30 @@ export default function UploadPage() {
         </Field>
 
         {errorMsg && (
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '10px 14px', borderRadius: 8, background: 'var(--accent-red)10', border: '1px solid var(--accent-red)33', color: 'var(--accent-red)', fontSize: '0.82rem' }}>
-            <AlertCircle size={14} />{errorMsg}
+          <div style={{
+            display: 'flex', gap: 8, alignItems: 'center',
+            padding: '10px 14px', borderRadius: 8,
+            background: 'var(--accent-red)10', border: '1px solid var(--accent-red)33',
+            color: 'var(--accent-red)', fontSize: '0.82rem',
+          }}>
+            <AlertCircle size={14} />
+            {errorMsg}
           </div>
         )}
 
-        <button onClick={handleSubmit} disabled={status === 'uploading'} style={{
-          width: '100%', padding: '14px',
-          background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-amber))',
-          border: 'none', borderRadius: 8, color: '#0a0a08',
-          fontWeight: 700, fontSize: '1rem',
-          cursor: status === 'uploading' ? 'not-allowed' : 'pointer',
-          opacity: status === 'uploading' ? 0.7 : 1,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-        }}>
+        <button
+          onClick={handleSubmit}
+          disabled={status === 'uploading'}
+          style={{
+            width: '100%', padding: '14px',
+            background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-amber))',
+            border: 'none', borderRadius: 8, color: '#0a0a08',
+            fontWeight: 700, fontSize: '1rem',
+            cursor: status === 'uploading' ? 'not-allowed' : 'pointer',
+            opacity: status === 'uploading' ? 0.7 : 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+          }}
+        >
           <Upload size={16} />
           {status === 'uploading' ? 'Uploading to Walrus…' : 'Upload & Process Episode'}
         </button>
@@ -170,7 +254,11 @@ export default function UploadPage() {
 function Field({ label, children }) {
   return (
     <div>
-      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--ink-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+      <label style={{
+        display: 'block', fontSize: '0.78rem', fontWeight: 600,
+        color: 'var(--ink-secondary)', marginBottom: 8,
+        textTransform: 'uppercase', letterSpacing: '0.06em',
+      }}>
         {label}
       </label>
       {children}
