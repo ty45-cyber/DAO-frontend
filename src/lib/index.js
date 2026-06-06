@@ -1,11 +1,12 @@
+import * as mockApi from './mockApi'
+import * as realApi from './api'
+
 const USE_MOCK =
   import.meta.env.VITE_USE_MOCK === 'true' ||
   import.meta.env.MODE === 'demo' ||
   !import.meta.env.VITE_API_URL
 
-const mod = USE_MOCK
-  ? await import('./mockApi')
-  : await import('./api')
+const mod = USE_MOCK ? mockApi : realApi
 
 export const fetchEpisodes   = mod.fetchEpisodes
 export const fetchEpisode    = mod.fetchEpisode

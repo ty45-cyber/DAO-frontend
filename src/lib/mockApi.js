@@ -1,15 +1,15 @@
 import { MOCK_CREATORS, MOCK_EPISODES, MOCK_CLIPS, MOCK_TIPS } from './mockData'
 
 const delay = (ms = 400) => new Promise(r => setTimeout(r, ms))
-const randomDelay = () => delay(300 + Math.random() * 500)
+const rand  = ()          => delay(300 + Math.random() * 500)
 
 export const fetchCreator = async (walletOrId) => {
-  await randomDelay()
-  const creator = MOCK_CREATORS.find(
+  await rand()
+  const c = MOCK_CREATORS.find(
     c => c.wallet_address === walletOrId || c.id === walletOrId
   )
-  if (!creator) throw new Error('Creator not found')
-  return creator
+  if (!c) throw new Error('Creator not found')
+  return c
 }
 
 export const registerCreator = async (data) => {
@@ -27,13 +27,13 @@ export const registerCreator = async (data) => {
 }
 
 export const fetchEpisodes = async (creator_id) => {
-  await randomDelay()
+  await rand()
   if (creator_id) return MOCK_EPISODES.filter(e => e.creator_id === creator_id)
   return MOCK_EPISODES
 }
 
 export const fetchEpisode = async (id) => {
-  await randomDelay()
+  await rand()
   const ep = MOCK_EPISODES.find(e => e.id === id)
   if (!ep) throw new Error('Episode not found')
   return ep
@@ -46,7 +46,7 @@ export const uploadEpisode = async (_form) => {
     creator_id: MOCK_CREATORS[0].id,
     title: 'Your Episode (Processing…)',
     description: null,
-    audio_walrus_blob_id: `blobMock${Date.now()}`,
+    audio_walrus_blob_id: `blobMock${Date.now()}xyzWalrus`,
     audio_url: null,
     sui_nft_object_id: null,
     duration_seconds: null,
@@ -59,7 +59,7 @@ export const uploadEpisode = async (_form) => {
 }
 
 export const fetchClips = async (episodeId) => {
-  await randomDelay()
+  await rand()
   return MOCK_CLIPS[episodeId] ?? []
 }
 
@@ -76,18 +76,18 @@ export const searchEpisodes = async (q) => {
       return text.includes(lower)
     })
     .map(ep => {
-      const creator = MOCK_CREATORS.find(c => c.id === ep.creator_id)
+      const creator  = MOCK_CREATORS.find(c => c.id === ep.creator_id)
       const fullText = [ep.title, ep.description ?? '', ...(ep.chapters ?? []).map(c => c.title + ' ' + c.summary)].join(' ')
-      const idx = fullText.toLowerCase().indexOf(lower)
-      const snippet = idx >= 0
+      const idx      = fullText.toLowerCase().indexOf(lower)
+      const snippet  = idx >= 0
         ? fullText.slice(Math.max(0, idx - 60), idx + 140)
         : fullText.slice(0, 180)
       return {
-        episode_id: ep.id,
-        title: ep.title,
-        creator_display_name: creator?.display_name ?? 'Unknown',
+        episode_id:             ep.id,
+        title:                  ep.title,
+        creator_display_name:   creator?.display_name ?? 'Unknown',
         snippet,
-        relevance_score: ep.title.toLowerCase().includes(lower) ? 1.0 : 0.72,
+        relevance_score:        ep.title.toLowerCase().includes(lower) ? 1.0 : 0.72,
       }
     })
     .sort((a, b) => b.relevance_score - a.relevance_score)
@@ -99,6 +99,6 @@ export const recordTip = async (_data) => {
 }
 
 export const getCreatorTips = async (_wallet) => {
-  await randomDelay()
+  await rand()
   return MOCK_TIPS
 }
